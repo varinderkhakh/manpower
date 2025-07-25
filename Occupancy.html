@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#2196f3" />
+  <link rel="manifest" href="manifest.json" />
+  <title>Occupancy Data Viewer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+      background-color: #f9f9f9;
+    }
+
+    h2 {
+      margin: 0 0 20px;
+      color: #333;
+    }
+
+    .search-bar {
+      padding: 10px;
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1000px;
+      background: white;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+
+    th {
+      background-color: #2196f3;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    @media (max-width: 600px) {
+      table {
+        min-width: 100%;
+        font-size: 12px;
+      }
+
+      th, td {
+        padding: 6px;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Occupancy Data</h2>
+  <input type="text" id="searchInput" class="search-bar" placeholder="Search..." />
+  <div class="table-container">
+    <table id="occupancyTable">
+      <thead>
+        <tr id="tableHeadRow"></tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyChRvUq2ldC7PsVwvzxmF1Sp43lzTcF5go",
+      authDomain: "spark-occupancy.firebaseapp.com",
+      databaseURL: "https://spark-occupancy-default-rtdb.firebaseio.com",
+      projectId: "spark-occupancy",
+      storageBucket: "spark-occupancy.appspot.com",
+      messagingSenderId: "330485090523",
+      appId: "1:330485090523:web:64829db31c1073aaebe4fe",
+      measurementId: "G-G2FQ5L196H"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const headers = [
+      "Sr No", "BS", "IDNo", "SAP ID", "Name", "Gender", "Position",
+      "Nationality", "Room", "Contact", "Building", "Status",
+      "Contract", "Accommodation Name", "Branch", "Remarks",
+      "Room Size", "Actual Occupancy"
+    ];
+
+    const tableHeadRow = document.getElementById("tableHeadRow");
+    const tableBody = document.getElementById("tableBody");
+    const searchInput = document.getElementById("searchInput");
+
+    headers.forEach(header => {
+      const th = document.createElement("th");
+      th.textContent = header;
+      tableHeadRow.appendChild(th);
+    });
+
+    let allData = [];
+
+    firebase.database().ref().on("value", snapshot => {
+      const data = snapshot.val();
+      allData = [];
+      tableBody.innerHTML = "";
+
+      if (data) {
+        Object.values(data).forEach(entry => {
+          allData.push(entry);
+        });
+        renderTable(allData);
+      }
+    });
+
+    function renderTable(data) {
+      tableBody.innerHTML = "";
+      data.forEach(row => {
+        const tr = document.createElement("tr");
+        headers.forEach(header => {
+          const td = document.createElement("td");
+          td.textContent = row[header] || "";
+          tr.appendChild(td);
+        });
+        tableBody.appendChild(tr);
+      });
+    }
+
+    searchInput.addEventListener("input", () => {
+      const searchValue = searchInput.value.toLowerCase();
+      const filtered = allData.filter(row =>
+        Object.values(row).some(value =>
+          String(value).toLowerCase().includes(searchValue)
+        )
+      );
+      renderTable(filtered);
+    });
+
+    // Register service worker (for installable PWA)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(() => {
+        console.log('✅ Service Worker registered');
+      });
+    }
+  </script>
+</body>
+</html>
