@@ -3,165 +3,209 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#2196f3" />
-  <link rel="manifest" href="manifest.json" />
-  <title>Occupancy Data Viewer</title>
+  <title>Occupancy Dashboard</title>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
       margin: 0;
-      background-color: #f9f9f9;
-    }
-
-    h2 {
-      margin: 0 0 20px;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background: #f4f7fa;
       color: #333;
     }
 
-    .search-bar {
-      padding: 10px;
-      width: 100%;
-      max-width: 500px;
-      margin-bottom: 20px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      font-size: 16px;
+    .container {
+      max-width: 1200px;
+      margin: 50px auto;
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
     }
 
-    .table-container {
-      overflow-x: auto;
+    h1 {
+      text-align: center;
+      color: #1976d2;
+      margin-bottom: 30px;
+      font-size: 32px;
+    }
+
+    .search-bar {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    #search {
+      padding: 10px 15px;
+      width: 300px;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      transition: all 0.3s;
+    }
+
+    #search:focus {
+      outline: none;
+      border-color: #1976d2;
+      box-shadow: 0 0 5px #1976d260;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 1000px;
-      background: white;
-    }
-
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px 12px;
       font-size: 14px;
     }
 
+    th, td {
+      padding: 12px 8px;
+      border: 1px solid #e0e0e0;
+      text-align: left;
+    }
+
     th {
-      background-color: #2196f3;
-      color: white;
+      background-color: #f0f3f6;
+      font-weight: 600;
+      color: #333;
     }
 
-    tr:nth-child(even) {
-      background-color: #f2f2f2;
+    tr:hover {
+      background-color: #f9f9f9;
     }
 
-    @media (max-width: 600px) {
-      table {
-        min-width: 100%;
-        font-size: 12px;
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
       }
 
-      th, td {
-        padding: 6px;
+      th {
+        background: #1976d2;
+        color: #fff;
+        text-align: center;
       }
 
-      h2 {
-        font-size: 18px;
+      td {
+        text-align: right;
+        padding-left: 50%;
+        position: relative;
+      }
+
+      td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 15px;
+        width: 45%;
+        white-space: nowrap;
+        font-weight: bold;
+        color: #555;
       }
     }
   </style>
 </head>
 <body>
-  <h2>Occupancy Data</h2>
-  <input type="text" id="searchInput" class="search-bar" placeholder="Search..." />
-  <div class="table-container">
-    <table id="occupancyTable">
-      <thead>
-        <tr id="tableHeadRow"></tr>
-      </thead>
-      <tbody id="tableBody"></tbody>
-    </table>
-  </div>
+  <div class="container">
+    <h1>🏠 Accommodation Dashboard</h1>
+    <div class="search-bar">
+      <input type="text" id="search" placeholder="Search by Name or ID..." oninput="filterTable()" />
+    </div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <div style="overflow-x: auto;">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>Sr No</th>
+            <th>BS</th>
+            <th>ID No</th>
+            <th>SAP ID</th>
+            <th>Name</th>
+            <th>Gender</th>
+            <th>Position</th>
+            <th>Nationality</th>
+            <th>Room</th>
+            <th>Contact</th>
+            <th>Building</th>
+            <th>Status</th>
+            <th>Contract</th>
+            <th>Accommodation</th>
+            <th>Branch</th>
+            <th>Remarks</th>
+            <th>Room Size</th>
+            <th>Actual Occupancy</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <!-- Rows inserted by JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
 
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyChRvUq2ldC7PsVwvzxmF1Sp43lzTcF5go",
+      apiKey: "AIzaSyDUMMYKEY",
       authDomain: "spark-occupancy.firebaseapp.com",
       databaseURL: "https://spark-occupancy-default-rtdb.firebaseio.com",
       projectId: "spark-occupancy",
       storageBucket: "spark-occupancy.appspot.com",
-      messagingSenderId: "330485090523",
-      appId: "1:330485090523:web:64829db31c1073aaebe4fe",
-      measurementId: "G-G2FQ5L196H"
+      messagingSenderId: "112570210295175503756",
+      appId: "1:112570210295175503756:web:abc123xyz456"
     };
 
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    const headers = [
-      "Sr No", "BS", "IDNo", "SAP ID", "Name", "Gender", "Position",
-      "Nationality", "Room", "Contact", "Building", "Status",
-      "Contract", "Accommodation Name", "Branch", "Remarks",
-      "Room Size", "Actual Occupancy"
-    ];
-
-    const tableHeadRow = document.getElementById("tableHeadRow");
+    const dbRef = firebase.database().ref('/occupants');
     const tableBody = document.getElementById("tableBody");
-    const searchInput = document.getElementById("searchInput");
 
-    headers.forEach(header => {
-      const th = document.createElement("th");
-      th.textContent = header;
-      tableHeadRow.appendChild(th);
-    });
-
-    let allData = [];
-
-    firebase.database().ref().on("value", snapshot => {
+    dbRef.on('value', (snapshot) => {
       const data = snapshot.val();
-      allData = [];
-      tableBody.innerHTML = "";
+      tableBody.innerHTML = '';
 
       if (data) {
         Object.values(data).forEach(entry => {
-          allData.push(entry);
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td data-label="Sr No">${entry.SrNo || ""}</td>
+            <td data-label="BS">${entry.BS || ""}</td>
+            <td data-label="ID No">${entry.IDNo || ""}</td>
+            <td data-label="SAP ID">${entry.SAP_ID || ""}</td>
+            <td data-label="Name">${entry.Name || ""}</td>
+            <td data-label="Gender">${entry.Gender || ""}</td>
+            <td data-label="Position">${entry.Position || ""}</td>
+            <td data-label="Nationality">${entry.Nationality || ""}</td>
+            <td data-label="Room">${entry.Room || ""}</td>
+            <td data-label="Contact">${entry.Contact || ""}</td>
+            <td data-label="Building">${entry.Building || ""}</td>
+            <td data-label="Status">${entry.Status || ""}</td>
+            <td data-label="Contract">${entry.Contract || ""}</td>
+            <td data-label="Accommodation">${entry.AccommodationName || ""}</td>
+            <td data-label="Branch">${entry.Branch || ""}</td>
+            <td data-label="Remarks">${entry.Remarks || ""}</td>
+            <td data-label="Room Size">${entry.RoomSize || ""}</td>
+            <td data-label="Actual Occupancy">${entry.ActualOccupancy || ""}</td>
+          `;
+          tableBody.appendChild(row);
         });
-        renderTable(allData);
+      } else {
+        const row = document.createElement("tr");
+        row.innerHTML = '<td colspan="18" style="text-align:center;">No data found</td>';
+        tableBody.appendChild(row);
       }
     });
 
-    function renderTable(data) {
-      tableBody.innerHTML = "";
-      data.forEach(row => {
-        const tr = document.createElement("tr");
-        headers.forEach(header => {
-          const td = document.createElement("td");
-          td.textContent = row[header] || "";
-          tr.appendChild(td);
-        });
-        tableBody.appendChild(tr);
-      });
-    }
+    function filterTable() {
+      const input = document.getElementById("search").value.toLowerCase();
+      const rows = document.getElementById("tableBody").getElementsByTagName("tr");
 
-    searchInput.addEventListener("input", () => {
-      const searchValue = searchInput.value.toLowerCase();
-      const filtered = allData.filter(row =>
-        Object.values(row).some(value =>
-          String(value).toLowerCase().includes(searchValue)
-        )
-      );
-      renderTable(filtered);
-    });
-
-    // Register service worker (for installable PWA)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then(() => {
-        console.log('✅ Service Worker registered');
-      });
+      for (let row of rows) {
+        const name = row.cells[4]?.textContent.toLowerCase();
+        const id = row.cells[2]?.textContent.toLowerCase();
+        row.style.display = (name.includes(input) || id.includes(input)) ? "" : "none";
+      }
     }
   </script>
 </body>
