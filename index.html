@@ -30,14 +30,15 @@
       background: #1976d2;
       color: white;
       padding: 20px;
+      text-align: center;
       font-size: 22px;
       font-weight: 600;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       position: sticky;
       top: 0;
       z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     header button {
@@ -92,20 +93,22 @@
 
     .card h3 {
       margin-top: 0;
-      color: #1976d2;
       font-size: 18px;
     }
 
-    .card .label {
-      font-weight: 600;
-      margin-right: 6px;
-      color: #444;
+    .card p {
+      margin: 6px 0;
+      font-size: 14px;
+      line-height: 1.5;
+      display: flex;
+      align-items: center;
     }
 
-    .card p {
-      margin: 4px 0;
-      font-size: 14px;
-      line-height: 1.4;
+    .emoji {
+      display: inline-block;
+      width: 26px;
+      margin-right: 8px;
+      font-size: 18px;
     }
 
     #loginForm {
@@ -136,17 +139,6 @@
       font-size: 16px;
     }
 
-    .password-options {
-      text-align: center;
-      margin-top: 10px;
-    }
-
-    .password-options a {
-      font-size: 14px;
-      color: #1976d2;
-      text-decoration: none;
-    }
-
     @media (max-width: 480px) {
       .card h3 {
         font-size: 16px;
@@ -165,9 +157,6 @@
     <input type="email" id="email" placeholder="Email" />
     <input type="password" id="password" placeholder="Password" />
     <button onclick="login()">Login</button>
-    <div class="password-options">
-      <a href="#" onclick="sendResetEmail()">Forgot Password?</a>
-    </div>
     <p id="errorMsg" style="color: red;"></p>
   </div>
 
@@ -175,11 +164,7 @@
   <div id="dashboard" style="display: none;">
     <header>
       <span>🏠 Occupancy Dashboard</span>
-      <div>
-        <input type="password" id="newPassword" placeholder="New Password" />
-        <button onclick="changePassword()">Change Password</button>
-        <button onclick="logout()">Logout</button>
-      </div>
+      <button onclick="logout()">Logout</button>
     </header>
 
     <div class="container">
@@ -198,7 +183,6 @@
   </div>
 
   <script>
-    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyChRvUq2ldC7PsVwvzxmF1Sp43lzTcF5go",
       authDomain: "spark-occupancy.firebaseapp.com",
@@ -245,42 +229,6 @@
       auth.signOut();
     }
 
-    function sendResetEmail() {
-      const email = document.getElementById("email").value;
-
-      if (!email) {
-        alert("Enter your email first.");
-        return;
-      }
-
-      auth.sendPasswordResetEmail(email)
-        .then(() => {
-          alert("Reset email sent. Check your inbox.");
-        })
-        .catch(error => {
-          alert("Error: " + error.message);
-        });
-    }
-
-    function changePassword() {
-      const user = auth.currentUser;
-      const newPassword = document.getElementById("newPassword").value;
-
-      if (!newPassword || newPassword.length < 6) {
-        alert("Password must be at least 6 characters.");
-        return;
-      }
-
-      user.updatePassword(newPassword)
-        .then(() => {
-          alert("Password updated successfully.");
-          document.getElementById("newPassword").value = "";
-        })
-        .catch(error => {
-          alert("Error: " + error.message);
-        });
-    }
-
     function getValue(normalized, keys) {
       for (const key of keys) {
         if (key in normalized) return normalized[key];
@@ -306,19 +254,19 @@
               const card = document.createElement("div");
               card.className = "card";
               card.innerHTML = `
-                <h3>${getValue(normalized, ["NAME"]) || "Unnamed"}</h3>
-                <p><span class="label">ID No:</span> ${getValue(normalized, ["IDNO", "ID NO", "ID"])}</p>
-                <p><span class="label">SAP ID:</span> ${getValue(normalized, ["SAPID", "SAP ID"])}</p>
-                <p><span class="label">Gender:</span> ${getValue(normalized, ["GENDER"])}</p>
-                <p><span class="label">Position:</span> ${getValue(normalized, ["POSITION"])}</p>
-                <p><span class="label">Nationality:</span> ${getValue(normalized, ["NATIONALITY"])}</p>
-                <p><span class="label">Room:</span> ${getValue(normalized, ["ROOM"])}</p>
-                <p><span class="label">Contact:</span> ${getValue(normalized, ["CONTACT"])}</p>
-                <p><span class="label">Building:</span> ${getValue(normalized, ["BUILDING"])}</p>
-                <p><span class="label">Status:</span> ${getValue(normalized, ["STATUS"])}</p>
-                <p><span class="label">Contract:</span> ${getValue(normalized, ["CONTRACT", "CONTRACT "])}</p>
-                <p><span class="label">Accommodation:</span> ${getValue(normalized, ["ACCOMMODATION"])}</p>
-                <p><span class="label">Branch:</span> ${branch}</p>
+                <h3>👤 ${getValue(normalized, ["NAME"]) || "Unnamed"}</h3>
+                <p><span class="emoji">🆔</span> ${getValue(normalized, ["IDNO", "ID NO", "ID"])}</p>
+                <p><span class="emoji">📇</span> ${getValue(normalized, ["SAPID", "SAP ID"])}</p>
+                <p><span class="emoji">⚧️</span> ${getValue(normalized, ["GENDER"])}</p>
+                <p><span class="emoji">💼</span> ${getValue(normalized, ["POSITION"])}</p>
+                <p><span class="emoji">🌍</span> ${getValue(normalized, ["NATIONALITY"])}</p>
+                <p><span class="emoji">🚪</span> ${getValue(normalized, ["ROOM"])}</p>
+                <p><span class="emoji">📞</span> ${getValue(normalized, ["CONTACT"])}</p>
+                <p><span class="emoji">🏢</span> ${getValue(normalized, ["BUILDING"])}</p>
+                <p><span class="emoji">📌</span> ${getValue(normalized, ["STATUS"])}</p>
+                <p><span class="emoji">📝</span> ${getValue(normalized, ["CONTRACT", "CONTRACT "])}</p>
+                <p><span class="emoji">🏠</span> ${getValue(normalized, ["ACCOMMODATION"])}</p>
+                <p><span class="emoji">🌐</span> ${branch}</p>
               `;
               cardContainer.appendChild(card);
             });
@@ -337,6 +285,11 @@
         card.style.display = (name.includes(input) || id.includes(input)) ? "" : "none";
       });
     }
+
+    // Auto logout on browser/tab close
+    window.addEventListener("beforeunload", function () {
+      auth.signOut();
+    });
   </script>
 </body>
 </html>
