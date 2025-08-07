@@ -137,6 +137,7 @@
       padding: 12px;
       border-radius: 8px;
       font-size: 16px;
+      cursor: pointer;
     }
 
     @media (max-width: 480px) {
@@ -197,6 +198,12 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
+    // Set auth persistence to SESSION so user is logged out on tab/browser close
+    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+      .catch(error => {
+        console.error("Error setting auth persistence:", error);
+      });
+
     const loginForm = document.getElementById("loginForm");
     const dashboard = document.getElementById("dashboard");
     const cardContainer = document.getElementById("cardContainer");
@@ -209,6 +216,7 @@
       } else {
         loginForm.style.display = "block";
         dashboard.style.display = "none";
+        cardContainer.innerHTML = "";
       }
     });
 
@@ -254,19 +262,19 @@
               const card = document.createElement("div");
               card.className = "card";
               card.innerHTML = `
-                <h3>👤 ${getValue(normalized, ["NAME"]) || "Unnamed"}</h3>
-                <p><span class="emoji">🆔</span> ${getValue(normalized, ["IDNO", "ID NO", "ID"])}</p>
-                <p><span class="emoji">📇</span> ${getValue(normalized, ["SAPID", "SAP ID"])}</p>
-                <p><span class="emoji">⚧️</span> ${getValue(normalized, ["GENDER"])}</p>
-                <p><span class="emoji">💼</span> ${getValue(normalized, ["POSITION"])}</p>
-                <p><span class="emoji">🌍</span> ${getValue(normalized, ["NATIONALITY"])}</p>
-                <p><span class="emoji">🚪</span> ${getValue(normalized, ["ROOM"])}</p>
-                <p><span class="emoji">📞</span> ${getValue(normalized, ["CONTACT"])}</p>
-                <p><span class="emoji">🏢</span> ${getValue(normalized, ["BUILDING"])}</p>
-                <p><span class="emoji">📌</span> ${getValue(normalized, ["STATUS"])}</p>
-                <p><span class="emoji">📝</span> ${getValue(normalized, ["CONTRACT", "CONTRACT "])}</p>
-                <p><span class="emoji">🏠</span> ${getValue(normalized, ["ACCOMMODATION"])}</p>
-                <p><span class="emoji">🌐</span> ${branch}</p>
+                <h3>👤 Name: ${getValue(normalized, ["NAME"]) || "Unnamed"}</h3>
+                <p><span class="emoji">🆔</span> ID No: ${getValue(normalized, ["IDNO", "ID NO", "ID"])}</p>
+                <p><span class="emoji">📇</span> SAP ID: ${getValue(normalized, ["SAPID", "SAP ID"])}</p>
+                <p><span class="emoji">⚧️</span> Gender: ${getValue(normalized, ["GENDER"])}</p>
+                <p><span class="emoji">💼</span> Position: ${getValue(normalized, ["POSITION"])}</p>
+                <p><span class="emoji">🌍</span> Nationality: ${getValue(normalized, ["NATIONALITY"])}</p>
+                <p><span class="emoji">🚪</span> Room: ${getValue(normalized, ["ROOM"])}</p>
+                <p><span class="emoji">📞</span> Contact: ${getValue(normalized, ["CONTACT"])}</p>
+                <p><span class="emoji">🏢</span> Building: ${getValue(normalized, ["BUILDING"])}</p>
+                <p><span class="emoji">📌</span> Status: ${getValue(normalized, ["STATUS"])}</p>
+                <p><span class="emoji">📝</span> Contract: ${getValue(normalized, ["CONTRACT", "CONTRACT "])}</p>
+                <p><span class="emoji">🏠</span> Accommodation: ${getValue(normalized, ["ACCOMMODATION"])}</p>
+                <p><span class="emoji">🌐</span> Branch: ${branch}</p>
               `;
               cardContainer.appendChild(card);
             });
@@ -285,11 +293,6 @@
         card.style.display = (name.includes(input) || id.includes(input)) ? "" : "none";
       });
     }
-
-    // Auto logout on browser/tab close
-    window.addEventListener("beforeunload", function () {
-      auth.signOut();
-    });
   </script>
 </body>
 </html>
