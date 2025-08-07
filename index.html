@@ -57,6 +57,35 @@
       padding: 0 16px;
     }
 
+    .branch-buttons {
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .branch-buttons button {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.3s;
+    }
+
+    .branch-buttons button.active {
+      background-color: #0d47a1;
+    }
+
+    .summary {
+      margin-bottom: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1976d2;
+    }
+
     .search-bar {
       background: white;
       padding: 16px;
@@ -169,6 +198,13 @@
     </header>
 
     <div class="container">
+      <!-- Branch buttons -->
+      <div class="branch-buttons" id="branchButtons"></div>
+
+      <!-- Summary -->
+      <div class="summary" id="summary"></div>
+
+      <!-- Search -->
       <div class="search-bar">
         <input
           type="text"
@@ -179,6 +215,7 @@
         />
       </div>
 
+      <!-- Cards -->
       <div id="cardContainer" class="cards"></div>
     </div>
   </div>
@@ -198,25 +235,39 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // Set auth persistence to SESSION so user is logged out on tab/browser close
-    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
-      .catch(error => {
-        console.error("Error setting auth persistence:", error);
-      });
+    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(err => console.error(err));
 
     const loginForm = document.getElementById("loginForm");
     const dashboard = document.getElementById("dashboard");
     const cardContainer = document.getElementById("cardContainer");
+    const branchButtonsDiv = document.getElementById("branchButtons");
+    const summaryDiv = document.getElementById("summary");
+    const branches = ["Al Qouz Female", "Al Quoz 2 Male", "Muhaisnah Male "];
+    let allData = {};
+    let currentBranch = "All";
+
+    // Allow login on Enter key
+    document.addEventListener("keydown", function (event) {
+      const isLoginVisible = loginForm.style.display !== "none";
+      if (isLoginVisible && event.key === "Enter") {
+        event.preventDefault();
+        login();
+      }
+    });
 
     auth.onAuthStateChanged(user => {
       if (user) {
         loginForm.style.display = "none";
         dashboard.style.display = "block";
-        loadData();
+        loadAllData();
       } else {
         loginForm.style.display = "block";
         dashboard.style.display = "none";
         cardContainer.innerHTML = "";
+        branchButtonsDiv.innerHTML = "";
+        summaryDiv.innerHTML = "";
+        allData = {};
+        currentBranch = "All";
       }
     });
 
@@ -225,12 +276,8 @@
       const password = document.getElementById("password").value;
 
       auth.signInWithEmailAndPassword(email, password)
-        .then(() => {
-          document.getElementById("errorMsg").textContent = "";
-        })
-        .catch(error => {
-          document.getElementById("errorMsg").textContent = error.message;
-        });
+        .then(() => document.getElementById("errorMsg").textContent = "")
+        .catch(error => document.getElementById("errorMsg").textContent = error.message);
     }
 
     function logout() {
@@ -244,43 +291,117 @@
       return "";
     }
 
-    function loadData() {
+    async function loadAllData() {
       cardContainer.innerHTML = "";
-      const branches = ["Al Qouz Female", "Al Quoz 2 Male", "Muhaisnah Male "];
+      branchButtonsDiv.innerHTML = "";
+      summaryDiv.innerHTML = "";
+      allData = {};
 
-      branches.forEach(branch => {
-        db.ref(branch).once("value", snapshot => {
+      const allBtn = document.createElement("button");
+      allBtn.textContent = "All";
+      allBtn.classList.add("active");
+      allBtn.onclick = () => selectBranch("All");
+      branchButtonsDiv.appendChild(allBtn);
+
+      for (const branch of branches) {
+        const btn = document.createElement("button");
+        btn.textContent = branch;
+        btn.onclick = () => selectBranch(branch);
+        branchButtonsDiv.appendChild(btn);
+
+        try {
+          const snapshot = await db.ref(branch).once("value");
           const data = snapshot.val();
+          allData[branch] = Array.isArray(data) ? data : [];
+        } catch (err) {
+          allData[branch] = [];
+        }
+      }
 
-          if (Array.isArray(data)) {
-            data.forEach(entry => {
-              const normalized = {};
-              Object.entries(entry).forEach(([k, v]) => {
-                normalized[k.trim().toUpperCase()] = v;
-              });
+      renderCards();
+      updateSummary();
+    }
 
-              const card = document.createElement("div");
-              card.className = "card";
-              card.innerHTML = `
-                <h3>👤 Name: ${getValue(normalized, ["NAME"]) || "Unnamed"}</h3>
-                <p><span class="emoji">🆔</span> ID No: ${getValue(normalized, ["IDNO", "ID NO", "ID"])}</p>
-                <p><span class="emoji">📇</span> SAP ID: ${getValue(normalized, ["SAPID", "SAP ID"])}</p>
-                <p><span class="emoji">⚧️</span> Gender: ${getValue(normalized, ["GENDER"])}</p>
-                <p><span class="emoji">💼</span> Position: ${getValue(normalized, ["POSITION"])}</p>
-                <p><span class="emoji">🌍</span> Nationality: ${getValue(normalized, ["NATIONALITY"])}</p>
-                <p><span class="emoji">🚪</span> Room: ${getValue(normalized, ["ROOM"])}</p>
-                <p><span class="emoji">📞</span> Contact: ${getValue(normalized, ["CONTACT"])}</p>
-                <p><span class="emoji">🏢</span> Building: ${getValue(normalized, ["BUILDING"])}</p>
-                <p><span class="emoji">📌</span> Status: ${getValue(normalized, ["STATUS"])}</p>
-                <p><span class="emoji">📝</span> Contract: ${getValue(normalized, ["CONTRACT", "CONTRACT "])}</p>
-                <p><span class="emoji">🏠</span> Accommodation: ${getValue(normalized, ["ACCOMMODATION"])}</p>
-                <p><span class="emoji">🌐</span> Branch: ${branch}</p>
-              `;
-              cardContainer.appendChild(card);
-            });
-          }
-        });
+    function selectBranch(branch) {
+      currentBranch = branch;
+      Array.from(branchButtonsDiv.children).forEach(btn => {
+        btn.classList.toggle("active", btn.textContent === branch);
       });
+      renderCards();
+      updateSummary();
+      filterCards();
+    }
+
+    function renderCards() {
+      cardContainer.innerHTML = "";
+      let dataToShow = [];
+
+      if (currentBranch === "All") {
+        for (const branch of branches) {
+          (allData[branch] || []).forEach(entry => {
+            entry._branch = branch;
+            dataToShow.push(entry);
+          });
+        }
+      } else {
+        (allData[currentBranch] || []).forEach(entry => {
+          entry._branch = currentBranch;
+          dataToShow.push(entry);
+        });
+      }
+
+      dataToShow.forEach(entry => {
+        const normalized = {};
+        Object.entries(entry).forEach(([k, v]) => {
+          normalized[k.trim().toUpperCase()] = v;
+        });
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <h3>👤 Name: ${getValue(normalized, ["NAME"]) || "Unnamed"}</h3>
+          <p><span class="emoji">🆔</span> ID No: ${getValue(normalized, ["IDNO", "ID NO", "ID"])}</p>
+          <p><span class="emoji">📇</span> SAP ID: ${getValue(normalized, ["SAPID", "SAP ID"])}</p>
+          <p><span class="emoji">⚧️</span> Gender: ${getValue(normalized, ["GENDER"])}</p>
+          <p><span class="emoji">💼</span> Position: ${getValue(normalized, ["POSITION"])}</p>
+          <p><span class="emoji">🌍</span> Nationality: ${getValue(normalized, ["NATIONALITY"])}</p>
+          <p><span class="emoji">🚪</span> Room: ${getValue(normalized, ["ROOM"])}</p>
+          <p><span class="emoji">📞</span> Contact: ${getValue(normalized, ["CONTACT"])}</p>
+          <p><span class="emoji">🏢</span> Building: ${getValue(normalized, ["BUILDING"])}</p>
+          <p><span class="emoji">📌</span> Status: ${getValue(normalized, ["STATUS"])}</p>
+          <p><span class="emoji">📝</span> Contract: ${getValue(normalized, ["CONTRACT", "CONTRACT "])}</p>
+          <p><span class="emoji">🏠</span> Accommodation: ${getValue(normalized, ["ACCOMMODATION"])}</p>
+          <p><span class="emoji">🌐</span> Branch: ${entry._branch}</p>
+        `;
+        cardContainer.appendChild(card);
+      });
+    }
+
+    function updateSummary() {
+      let dataToCount = [];
+
+      if (currentBranch === "All") {
+        for (const branch of branches) {
+          dataToCount = dataToCount.concat(allData[branch] || []);
+        }
+      } else {
+        dataToCount = allData[currentBranch] || [];
+      }
+
+      let activeCount = 0;
+      let emptyCount = 0;
+
+      dataToCount.forEach(entry => {
+        const normalized = {};
+        Object.entries(entry).forEach(([k, v]) => {
+          normalized[k.trim().toUpperCase()] = v;
+        });
+        const status = (getValue(normalized, ["STATUS"]) || "").toLowerCase();
+        if (status === "active") activeCount++;
+        else if (status === "empty") emptyCount++;
+      });
+
+      summaryDiv.textContent = `Status Summary: Active - ${activeCount}, Empty - ${emptyCount}`;
     }
 
     function filterCards() {
