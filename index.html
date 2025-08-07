@@ -7,6 +7,7 @@
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
   <!-- Google Fonts -->
@@ -23,7 +24,6 @@
       background: linear-gradient(to right, #e3f2fd, #fce4ec);
       min-height: 100vh;
       color: #333;
-      padding: 0;
     }
 
     header {
@@ -33,10 +33,22 @@
       text-align: center;
       font-size: 22px;
       font-weight: 600;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       position: sticky;
       top: 0;
       z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header button {
+      background: white;
+      color: #1976d2;
+      border: none;
+      padding: 8px 14px;
+      font-size: 14px;
+      border-radius: 8px;
+      cursor: pointer;
     }
 
     .container {
@@ -97,6 +109,34 @@
       line-height: 1.4;
     }
 
+    #loginForm {
+      max-width: 400px;
+      margin: 80px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    #loginForm input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+
+    #loginForm button {
+      width: 100%;
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
     @media (max-width: 480px) {
       .card h3 {
         font-size: 16px;
@@ -109,25 +149,39 @@
   </style>
 </head>
 <body>
-  <header>🏠 Occupancy Dashboard</header>
+  <!-- Login Form -->
+  <div id="loginForm" style="display: none;">
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <p id="errorMsg" style="color: red;"></p>
+  </div>
 
-  <div class="container">
-    <div class="search-bar">
-      <input
-        type="text"
-        id="search"
-        placeholder="🔍 Search by Name or ID..."
-        oninput="filterCards()"
-        autocomplete="off"
-      />
-    </div>
+  <!-- Main Dashboard -->
+  <div id="dashboard" style="display: none;">
+    <header>
+      <span>🏠 Occupancy Dashboard</span>
+      <button onclick="logout()">Logout</button>
+    </header>
 
-    <div id="cardContainer" class="cards">
-      <!-- Cards filled here via JS -->
+    <div class="container">
+      <div class="search-bar">
+        <input
+          type="text"
+          id="search"
+          placeholder="🔍 Search by Name or ID..."
+          oninput="filterCards()"
+          autocomplete="off"
+        />
+      </div>
+
+      <div id="cardContainer" class="cards"></div>
     </div>
   </div>
 
   <script>
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyChRvUq2ldC7PsVwvzxmF1Sp43lzTcF5go",
       authDomain: "spark-occupancy.firebaseapp.com",
@@ -139,10 +193,42 @@
     };
 
     firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     const db = firebase.database();
 
-    const branches = ["Al Qouz Female", "Al Quoz 2 Male", "Muhaisnah Male "];
+    // UI Elements
+    const loginForm = document.getElementById("loginForm");
+    const dashboard = document.getElementById("dashboard");
     const cardContainer = document.getElementById("cardContainer");
+
+    // Auth state
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        loginForm.style.display = "none";
+        dashboard.style.display = "block";
+        loadData();
+      } else {
+        loginForm.style.display = "block";
+        dashboard.style.display = "none";
+      }
+    });
+
+    function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(() => {
+          document.getElementById("errorMsg").textContent = "";
+        })
+        .catch(error => {
+          document.getElementById("errorMsg").textContent = error.message;
+        });
+    }
+
+    function logout() {
+      auth.signOut();
+    }
 
     function getValue(normalized, keys) {
       for (const key of keys) {
@@ -151,39 +237,44 @@
       return "";
     }
 
-    branches.forEach(branch => {
-      db.ref(branch).once("value", snapshot => {
-        const data = snapshot.val();
+    function loadData() {
+      cardContainer.innerHTML = "";
+      const branches = ["Al Qouz Female", "Al Quoz 2 Male", "Muhaisnah Male "];
 
-        if (Array.isArray(data)) {
-          data.forEach(entry => {
-            const normalized = {};
-            Object.entries(entry).forEach(([k, v]) => {
-              normalized[k.trim().toUpperCase()] = v;
+      branches.forEach(branch => {
+        db.ref(branch).once("value", snapshot => {
+          const data = snapshot.val();
+
+          if (Array.isArray(data)) {
+            data.forEach(entry => {
+              const normalized = {};
+              Object.entries(entry).forEach(([k, v]) => {
+                normalized[k.trim().toUpperCase()] = v;
+              });
+
+              const card = document.createElement("div");
+              card.className = "card";
+              card.innerHTML = `
+                <h3>${getValue(normalized, ["NAME"]) || "Unnamed"}</h3>
+                <p><span class="label">ID No:</span> ${getValue(normalized, ["IDNO", "ID NO", "ID"])}</p>
+                <p><span class="label">SAP ID:</span> ${getValue(normalized, ["SAPID", "SAP ID"])}</p>
+                <p><span class="label">Gender:</span> ${getValue(normalized, ["GENDER"])}</p>
+                <p><span class="label">Position:</span> ${getValue(normalized, ["POSITION"])}</p>
+                <p><span class="label">Nationality:</span> ${getValue(normalized, ["NATIONALITY"])}</p>
+                <p><span class="label">Room:</span> ${getValue(normalized, ["ROOM"])}</p>
+                <p><span class="label">Contact:</span> ${getValue(normalized, ["CONTACT"])}</p>
+                <p><span class="label">Building:</span> ${getValue(normalized, ["BUILDING"])}</p>
+                <p><span class="label">Status:</span> ${getValue(normalized, ["STATUS"])}</p>
+                <p><span class="label">Contract:</span> ${getValue(normalized, ["CONTRACT", "CONTRACT "])}</p>
+                <p><span class="label">Accommodation:</span> ${getValue(normalized, ["ACCOMMODATION"])}</p>
+                <p><span class="label">Branch:</span> ${branch}</p>
+              `;
+              cardContainer.appendChild(card);
             });
-
-            const card = document.createElement("div");
-            card.className = "card";
-            card.innerHTML = `
-              <h3>${getValue(normalized, ["NAME"]) || "Unnamed"}</h3>
-              <p><span class="label">ID No:</span> ${getValue(normalized, ["IDNO", "ID NO", "ID"])}</p>
-              <p><span class="label">SAP ID:</span> ${getValue(normalized, ["SAPID", "SAP ID"])}</p>
-              <p><span class="label">Gender:</span> ${getValue(normalized, ["GENDER"])}</p>
-              <p><span class="label">Position:</span> ${getValue(normalized, ["POSITION"])}</p>
-              <p><span class="label">Nationality:</span> ${getValue(normalized, ["NATIONALITY"])}</p>
-              <p><span class="label">Room:</span> ${getValue(normalized, ["ROOM"])}</p>
-              <p><span class="label">Contact:</span> ${getValue(normalized, ["CONTACT"])}</p>
-              <p><span class="label">Building:</span> ${getValue(normalized, ["BUILDING"])}</p>
-              <p><span class="label">Status:</span> ${getValue(normalized, ["STATUS"])}</p>
-              <p><span class="label">Contract:</span> ${getValue(normalized, ["CONTRACT", "CONTRACT "])}</p>
-              <p><span class="label">Accommodation:</span> ${getValue(normalized, ["ACCOMMODATION"])}</p>
-              <p><span class="label">Branch:</span> ${branch}</p>
-            `;
-            cardContainer.appendChild(card);
-          });
-        }
+          }
+        });
       });
-    });
+    }
 
     function filterCards() {
       const input = document.getElementById("search").value.toLowerCase();
