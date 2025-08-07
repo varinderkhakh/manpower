@@ -30,15 +30,14 @@
       background: #1976d2;
       color: white;
       padding: 20px;
-      text-align: center;
       font-size: 22px;
       font-weight: 600;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
     }
 
     header button {
@@ -137,6 +136,17 @@
       font-size: 16px;
     }
 
+    .password-options {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .password-options a {
+      font-size: 14px;
+      color: #1976d2;
+      text-decoration: none;
+    }
+
     @media (max-width: 480px) {
       .card h3 {
         font-size: 16px;
@@ -155,6 +165,9 @@
     <input type="email" id="email" placeholder="Email" />
     <input type="password" id="password" placeholder="Password" />
     <button onclick="login()">Login</button>
+    <div class="password-options">
+      <a href="#" onclick="sendResetEmail()">Forgot Password?</a>
+    </div>
     <p id="errorMsg" style="color: red;"></p>
   </div>
 
@@ -162,7 +175,11 @@
   <div id="dashboard" style="display: none;">
     <header>
       <span>🏠 Occupancy Dashboard</span>
-      <button onclick="logout()">Logout</button>
+      <div>
+        <input type="password" id="newPassword" placeholder="New Password" />
+        <button onclick="changePassword()">Change Password</button>
+        <button onclick="logout()">Logout</button>
+      </div>
     </header>
 
     <div class="container">
@@ -196,12 +213,10 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // UI Elements
     const loginForm = document.getElementById("loginForm");
     const dashboard = document.getElementById("dashboard");
     const cardContainer = document.getElementById("cardContainer");
 
-    // Auth state
     auth.onAuthStateChanged(user => {
       if (user) {
         loginForm.style.display = "none";
@@ -228,6 +243,42 @@
 
     function logout() {
       auth.signOut();
+    }
+
+    function sendResetEmail() {
+      const email = document.getElementById("email").value;
+
+      if (!email) {
+        alert("Enter your email first.");
+        return;
+      }
+
+      auth.sendPasswordResetEmail(email)
+        .then(() => {
+          alert("Reset email sent. Check your inbox.");
+        })
+        .catch(error => {
+          alert("Error: " + error.message);
+        });
+    }
+
+    function changePassword() {
+      const user = auth.currentUser;
+      const newPassword = document.getElementById("newPassword").value;
+
+      if (!newPassword || newPassword.length < 6) {
+        alert("Password must be at least 6 characters.");
+        return;
+      }
+
+      user.updatePassword(newPassword)
+        .then(() => {
+          alert("Password updated successfully.");
+          document.getElementById("newPassword").value = "";
+        })
+        .catch(error => {
+          alert("Error: " + error.message);
+        });
     }
 
     function getValue(normalized, keys) {
