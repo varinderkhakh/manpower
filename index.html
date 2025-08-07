@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Occupancy Dashboard</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(to right, #e3f2fd, #fce4ec);
+      min-height: 100vh;
+      color: #333;
+      padding: 0;
+    }
+
+    header {
+      background: #1976d2;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 16px;
+    }
+
+    .search-bar {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+      margin-bottom: 20px;
+    }
+
+    .search-bar input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: white;
+      padding: 16px;
+      border-radius: 14px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: #1976d2;
+      font-size: 18px;
+    }
+
+    .card .label {
+      font-weight: 600;
+      margin-right: 6px;
+      color: #444;
+    }
+
+    .card p {
+      margin: 4px 0;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    @media (max-width: 480px) {
+      .card h3 {
+        font-size: 16px;
+      }
+
+      .card p {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>🏠 Occupancy Dashboard</header>
+
+  <div class="container">
+    <div class="search-bar">
+      <input
+        type="text"
+        id="search"
+        placeholder="🔍 Search by Name or ID..."
+        oninput="filterCards()"
+        autocomplete="off"
+      />
+    </div>
+
+    <div id="cardContainer" class="cards">
+      <!-- Cards filled here via JS -->
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyChRvUq2ldC7PsVwvzxmF1Sp43lzTcF5go",
+      authDomain: "spark-occupancy.firebaseapp.com",
+      databaseURL: "https://spark-occupancy-default-rtdb.firebaseio.com",
+      projectId: "spark-occupancy",
+      storageBucket: "spark-occupancy.appspot.com",
+      messagingSenderId: "330485090523",
+      appId: "1:330485090523:web:64829db31c1073aaebe4fe",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const branches = ["Al Qouz Female", "Al Quoz 2 Male", "Muhaisnah Male "];
+    const cardContainer = document.getElementById("cardContainer");
+
+    function getValue(normalized, keys) {
+      for (const key of keys) {
+        if (key in normalized) return normalized[key];
+      }
+      return "";
+    }
+
+    branches.forEach(branch => {
+      db.ref(branch).once("value", snapshot => {
+        const data = snapshot.val();
+
+        if (Array.isArray(data)) {
+          data.forEach(entry => {
+            const normalized = {};
+            Object.entries(entry).forEach(([k, v]) => {
+              normalized[k.trim().toUpperCase()] = v;
+            });
+
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `
+              <h3>${getValue(normalized, ["NAME"]) || "Unnamed"}</h3>
+              <p><span class="label">ID No:</span> ${getValue(normalized, ["IDNO", "ID NO", "ID"])}</p>
+              <p><span class="label">SAP ID:</span> ${getValue(normalized, ["SAPID", "SAP ID"])}</p>
+              <p><span class="label">Gender:</span> ${getValue(normalized, ["GENDER"])}</p>
+              <p><span class="label">Position:</span> ${getValue(normalized, ["POSITION"])}</p>
+              <p><span class="label">Nationality:</span> ${getValue(normalized, ["NATIONALITY"])}</p>
+              <p><span class="label">Room:</span> ${getValue(normalized, ["ROOM"])}</p>
+              <p><span class="label">Contact:</span> ${getValue(normalized, ["CONTACT"])}</p>
+              <p><span class="label">Building:</span> ${getValue(normalized, ["BUILDING"])}</p>
+              <p><span class="label">Status:</span> ${getValue(normalized, ["STATUS"])}</p>
+              <p><span class="label">Contract:</span> ${getValue(normalized, ["CONTRACT", "CONTRACT "])}</p>
+              <p><span class="label">Accommodation:</span> ${getValue(normalized, ["ACCOMMODATION"])}</p>
+              <p><span class="label">Branch:</span> ${branch}</p>
+            `;
+            cardContainer.appendChild(card);
+          });
+        }
+      });
+    });
+
+    function filterCards() {
+      const input = document.getElementById("search").value.toLowerCase();
+      const cards = document.querySelectorAll(".card");
+
+      cards.forEach(card => {
+        const name = card.querySelector("h3")?.textContent.toLowerCase();
+        const id = card.innerHTML.toLowerCase();
+        card.style.display = (name.includes(input) || id.includes(input)) ? "" : "none";
+      });
+    }
+  </script>
+</body>
+</html>
